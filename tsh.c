@@ -362,9 +362,9 @@ void do_bgfg(char **argv)
         return;
     }
 
-    if
+    // if
 
-        return;
+    return;
 }
 
 /*
@@ -409,12 +409,14 @@ void sigchld_handler(int sig)
     pid_t pid;
 
     pid = waitpid(-1, NULL, 0);
-    while(pid>0){
+    while (pid > 0)
+    {
         printf("Reaping child with ID %d", (int)pid);
         pid = waitpid(-1, NULL, 0);
     }
 
-    if (errno != ECHILD){
+    if (errno != ECHILD)
+    {
         unix_error("Error in WaitPID");
     }
 
@@ -428,8 +430,20 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig)
 {
-    printf("Caught a SIGINT\n");
-    exit(0);
+    printf(" Interrupt signal\ntsh> "); // Weird problem of not printing the terminal after signal handling
+
+    // Get the process ID and send the signal using kill function?
+    pid_t pid = fgpid(jobs);
+    if (pid != 0)
+    {
+        if (verbose)
+        {
+            printf("Terminating the foreground job\n");
+        }
+
+        kill(pid, 2);
+    }
+
     return;
 }
 
@@ -440,7 +454,19 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig)
 {
-    printf("Caught a SIGSTP\n");
+    printf(" Suspend signal\n");
+
+    pid_t pid = fgpid(jobs);
+    if (pid != 0)
+    {
+        if (verbose){
+            printf("Suspending the current forground job\n");
+        }
+
+        kill(pid, 20);
+    }
+    printf("");
+
     return;
 }
 
