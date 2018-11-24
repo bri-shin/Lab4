@@ -187,7 +187,7 @@ void eval(char *cmdline)
     char *argv[MAXARGS]; // List of Arguments
     pid_t pid;           // Process ID
     sigset_t mask;       // Blocking Signals
-    int bg;              // Foreground (fg) / Background (bg)
+    int bg;              // Foreground (fg) / Background (bg) - parseline returns 1 for bg
 
     // Parse the command line and build the argv array.
     bg = parseline(cmdline, argv);
@@ -406,6 +406,18 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig)
 {
+    pid_t pid;
+
+    pid = waitpid(-1, NULL, 0);
+    while(pid>0){
+        printf("Reaping child with ID %d", (int)pid);
+        pid = waitpid(-1, NULL, 0);
+    }
+
+    if (errno != ECHILD){
+        unix_error("Error in WaitPID");
+    }
+
     return;
 }
 
@@ -416,6 +428,8 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig)
 {
+    printf("Caught a SIGINT\n");
+    exit(0);
     return;
 }
 
@@ -426,6 +440,7 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig)
 {
+    printf("Caught a SIGSTP\n");
     return;
 }
 
