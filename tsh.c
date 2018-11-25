@@ -192,6 +192,10 @@ void eval(char *cmdline)
     // Parse the command line and build the argv array.
     bg = parseline(cmdline, argv);
 
+    // Parseline returns 1 if argc is 0, ignore and return if that happens
+    if (bg)
+        return;
+
     // Evaluating whether argument is valid builtin_cmd
     if (!builtin_cmd(argv))
     {
@@ -319,7 +323,7 @@ int builtin_cmd(char **argv)
     }
 
     // Comapre input to "jobs"
-    else if (strcmp(argv[0], "jobs"))
+    else if (!strcmp(argv[0], "jobs"))
     {
         if (verbose)
         {
