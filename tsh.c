@@ -499,7 +499,7 @@ void sigchld_handler(int sig)
             // Child terminated because of an uncaught signal. So, delete the job from the list. 
             // Also, according to reference solution, we must print the signal which caused the termination. 
             int terminator = WTERMSIG(status);
-            printf("[%d] (%d) stopped by SIGNAL %d\n", pid2jid(pid), pid, terminator);
+            printf("JOB [%d] (%d) terminated by SIGNAL %d\n", pid2jid(pid), pid, terminator);
             
 
         }
@@ -509,11 +509,13 @@ void sigchld_handler(int sig)
             job->state=ST; // Set the state to ST (stopped)      
             // According to reference solution, we should print the Signal that caused the stop. (use )
             int stopper = WSTOPSIG(status);
-            printf("[%d] (%d) stopped by SIGNAL %d\n", pid2jid(pid), pid, stopper);                 
+            printf("JOB [%d] (%d) stopped by SIGNAL %d\n", pid2jid(pid), pid, stopper);                 
         }
             
     }
-    if (errno != ECHILD)
+
+    // Detect Error and print accordingly (got this part from the textbook)
+    if (errno == ECHILD)
     {
         unix_error("Error in WaitPID\n");
     }
@@ -529,7 +531,8 @@ void sigchld_handler(int sig)
 void sigint_handler(int sig)
 {
     printf("Interrupt Signal\n");
-    // Get the process ID and send the signal using kill function?
+
+    // Get the process ID and send the SIGINT signal using kill function
     pid_t pid = fgpid(jobs);
     if (pid != 0)
     {
@@ -553,6 +556,7 @@ void sigtstp_handler(int sig)
 {
     printf(" Suspend signal\n");
 
+    // Get the process ID and send the signal using kill function
     pid_t pid = fgpid(jobs);
     if (pid != 0)
     {
