@@ -214,7 +214,7 @@ void eval(char *cmdline)
         // Forking Child Process
         if ((pid = _fork()) == 0)
         {
-            printf("In the child");
+            printf("In the child\n");
             _setpgid(0, 0);                         // Setting child's group
             _sigprocmask(SIG_UNBLOCK, &mask, NULL); // Unblocking SIGCHLD
 
@@ -231,7 +231,7 @@ void eval(char *cmdline)
         // Parent
         else
         {
-            printf("In the parent");
+            printf("In the parent\n");
             addjob(jobs, pid, bg ? BG : FG, cmdline); // Adding process to job list, depending on BG/FG
             _sigprocmask(SIG_UNBLOCK, &mask, NULL);   // Retrieving SIGCHLD signal by unblocking
 
