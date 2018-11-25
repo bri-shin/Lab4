@@ -193,9 +193,10 @@ void eval(char *cmdline)
     // Parse the command line and build the argv array.
     bg = parseline(cmdline, argv);
 
-    // Parseline returns 1 if argc is 0, ignore and return if that happens
-    if (bg)
+    // If there is no first argument (meaning that the user has just pressed ENTER), don't do anything - display new prompt
+    if (argv[0]==NULL){
         return;
+    }
 
     // Evaluating whether argument is valid builtin_cmd
     if (!builtin_cmd(argv))
@@ -214,14 +215,12 @@ void eval(char *cmdline)
         // Forking Child Process
         if ((pid = _fork()) == 0)
         {
-            printf("In the child\n");
             _setpgid(0, 0);                         // Setting child's group
             _sigprocmask(SIG_UNBLOCK, &mask, NULL); // Unblocking SIGCHLD
 
             // Checking command
             if (execve(argv[0], argv, environ) < 0)
             {
-                printf("Should exit then\n");
                 printf("Command not found: %s\n", argv[0]);
                 exit(1);
             }
@@ -231,13 +230,12 @@ void eval(char *cmdline)
         // Parent
         else
         {
-            printf("In the parent\n");
             addjob(jobs, pid, bg ? BG : FG, cmdline); // Adding process to job list, depending on BG/FG
             _sigprocmask(SIG_UNBLOCK, &mask, NULL);   // Retrieving SIGCHLD signal by unblocking
 
             if (!bg)
             {
-                // waitfg(pid); // Reaping when job is Terminated
+                waitfg(pid); // Reaping when job is Terminated
             }
             else
             {
@@ -402,7 +400,7 @@ void do_bgfg(char **argv)
         if (!pid || job == NULL)
         {
             //(2): No such process
-            printf("(%s): No such process\n");
+            printf("%s: No such process\n");
             return;
         }
     }
@@ -439,9 +437,9 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
-    // Intially get fg job
+    // First, we get the FG job
     struct job_t *fg_job = getjobpid(jobs, pid);
-    // Wait until fg is finished
+
     if (verbose)
         printf("Waiting FG\n");
 
@@ -450,6 +448,7 @@ void waitfg(pid_t pid)
         return;
     }
 
+    // Wait until FG job is finished using sleep()
     if (fg_job != NULL)
     {
         while (pid == fgpid(jobs))
@@ -484,30 +483,31 @@ void sigchld_handler(int sig)
 
     // Here we modify default behviour of the waitpid function. 
     // We pass an integer which gets the status of the child. 
-    // The mode is set to WNOHANG|WUNTRACED - returns the pid of one of the stopped or terminated children, 0 if none. (from textbook)
+    // The mode is set to WNOHANG|WUNTRACED - returns the pid of one of the 
+    //  stopped or terminated children, 0 if none. (from textbook)
     while ((pid = waitpid(-1, &status, WNOHANG|WUNTRACED))>0)
     {
         // Now that we have status of the child, we can either delete, or change state. 
         job = getjobpid(jobs,pid);
         if (WIFEXITED(status)){
             // Child terminated normally. So, delete the job from the list. 
-            printf("Child exited normally\n");
+            if (verbose) printf("   Child exited normally\n");
             deletejob(jobs, pid);
 
         }
         else if (WIFSIGNALED(status)){
             // Child terminated because of an uncaught signal. So, delete the job from the list. 
-            // Also, according to reference solution, we must print the signal which caused the termination. 
+            // Also, according to reference solution, we must print the signal which caused the termination. (use WTERMSIG)
             int terminator = WTERMSIG(status);
             printf("JOB [%d] (%d) terminated by SIGNAL %d\n", pid2jid(pid), pid, terminator);
-            
+            deletejob(jobs, pid);
 
         }
         
         else if (WIFSTOPPED(status)){
             // Child is currently stopped. No need to delete. 
             job->state=ST; // Set the state to ST (stopped)      
-            // According to reference solution, we should print the Signal that caused the stop. (use )
+            // According to reference solution, we should print the Signal that caused the stop. (use WSTOPSIG)
             int stopper = WSTOPSIG(status);
             printf("JOB [%d] (%d) stopped by SIGNAL %d\n", pid2jid(pid), pid, stopper);                 
         }
@@ -515,10 +515,10 @@ void sigchld_handler(int sig)
     }
 
     // Detect Error and print accordingly (got this part from the textbook)
-    if (errno == ECHILD)
-    {
-        unix_error("Error in WaitPID\n");
-    }
+    // if (errno == ECHILD)
+    // {
+    //     unix_error("Error in WaitPID\n");
+    // }
 
     return;
 }
