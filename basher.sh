@@ -13,10 +13,10 @@ CMD1="$(make $CMD$i)"
 CMD2="$(make r$CMD$i)"
 
 echo "YOUR ANSWER BELOW"
-OUTPUT1= echo "${CMD1}"
+OUTPUT1= ${CMD1}
 echo "******************"
 echo "CORRECT ANSWER BELOW"
-OUTPUT2= echo "${CMD2}"
+OUTPUT2= ${CMD2}
 
 
 echo "------------------"

@@ -194,7 +194,8 @@ void eval(char *cmdline)
     bg = parseline(cmdline, argv);
 
     // If there is no first argument (meaning that the user has just pressed ENTER), don't do anything - display new prompt
-    if (argv[0]==NULL){
+    if (argv[0] == NULL)
+    {
         return;
     }
 
@@ -205,12 +206,6 @@ void eval(char *cmdline)
         _sigemptyset(&mask);                  // Initializing signal set
         _sigaddset(&mask, SIGCHLD);           // Adding SIGCHLD to signal set
         _sigprocmask(SIG_BLOCK, &mask, NULL); // Adding singals to SIG_BLOCK
-
-        // Check for forking error
-        // if ((pid == _fork()) < 0)
-        // {
-        //     unix_error("Fork Error");
-        // }
 
         // Forking Child Process
         if ((pid = _fork()) == 0)
@@ -371,62 +366,62 @@ void do_bgfg(char **argv)
         return;
     }
 
-    // Job ID
+    // We will first get the job from the supplied jid or pid and then change the state later. 
+    
     if (id[0] == '%')
     {
+        // Here, user has supplied JID. We get the corresponding job. 
         jid = atoi(&id[1]);
         job = getjobjid(jobs, jid); // Getting Job
 
-        // For Invalid jid
-        if (!jid || job == NULL)
+        // If the job returned is NULL or the jid is 0 (no jid should be zero) - we return with error msg
+        if (job==NULL || jid==0)
         {
             //%2: No such job
             printf("%s: No such job\n", id);
             return;
         }
-        else
-        {
-            pid = job->pid; // Getting pid when job is valid (to kill later)
-        }
     }
 
-    // PID
+    // The other option is that user has supplied PID. We get the corresponding job. 
     else if (isdigit(id[0]))
     {
         pid = atoi(id);
-        job = getjobjid(jobs, jid);
+        job = getjobpid(jobs, pid);
 
-        // For Invalid pid
-        if (!pid || job == NULL)
+        // Again, if job returned is NULL or pid is 0, we return with error msg. 
+        if (job==NULL || pid==0)
         {
             //(2): No such process
-            printf("%s: No such process\n");
+            printf("(%d): No such process\n", pid);
             return;
         }
     }
 
+    // The default case is that user has supplied some garbage value for the jid/pid starting without digit or %. 
     else
     {
         printf("%s: argument must be PID of %%jobid\n", argv[0]);
         return;
     }
 
+    pid = job->pid;
+
     // Resuming program when SIGCONT received
     kill(-pid, SIGCONT);
 
+    // Now that we have the job, we can "do" fg/bg accordingly
     if (!strcmp("fg", argv[0]))
     {
-        // Wait FG - if FG, then stop the process
+        // This command moves BG to FG. Change state and call waitfg. 
         job->state = FG;
         waitfg(job->pid);
     }
     else
     {
-        // Print BG - if
-        printf("job state before %d\n", job->state);
+        // This command moves FG to BG. Change state and print that jobs is now in BG. 
         job->state = BG;
         printf("[%d] (%d) %s\n", job->jid, job->pid, job->cmdline);
-        printf("job state after %d\n", job->state);
     }
 
     return;
@@ -481,37 +476,38 @@ void sigchld_handler(int sig)
         printf("SIGCHLD signal recieved\n");
     }
 
-    // Here we modify default behviour of the waitpid function. 
-    // We pass an integer which gets the status of the child. 
-    // The mode is set to WNOHANG|WUNTRACED - returns the pid of one of the 
+    // Here we modify default behviour of the waitpid function.
+    // We pass an integer which gets the status of the child.
+    // The mode is set to WNOHANG|WUNTRACED - returns the pid of one of the
     //  stopped or terminated children, 0 if none. (from textbook)
-    while ((pid = waitpid(-1, &status, WNOHANG|WUNTRACED))>0)
+    while ((pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0)
     {
-        // Now that we have status of the child, we can either delete, or change state. 
-        job = getjobpid(jobs,pid);
-        if (WIFEXITED(status)){
-            // Child terminated normally. So, delete the job from the list. 
-            if (verbose) printf("   Child exited normally\n");
+        // Now that we have status of the child, we can either delete, or change state.
+        job = getjobpid(jobs, pid);
+        if (WIFEXITED(status))
+        {
+            // Child terminated normally. So, delete the job from the list.
+            if (verbose)
+                printf("   Child exited normally\n");
             deletejob(jobs, pid);
-
         }
-        else if (WIFSIGNALED(status)){
-            // Child terminated because of an uncaught signal. So, delete the job from the list. 
+        else if (WIFSIGNALED(status))
+        {
+            // Child terminated because of an uncaught signal. So, delete the job from the list.
             // Also, according to reference solution, we must print the signal which caused the termination. (use WTERMSIG)
             int terminator = WTERMSIG(status);
             printf("JOB [%d] (%d) terminated by SIGNAL %d\n", pid2jid(pid), pid, terminator);
             deletejob(jobs, pid);
-
         }
-        
-        else if (WIFSTOPPED(status)){
-            // Child is currently stopped. No need to delete. 
-            job->state=ST; // Set the state to ST (stopped)      
+
+        else if (WIFSTOPPED(status))
+        {
+            // Child is currently stopped. No need to delete.
+            job->state = ST; // Set the state to ST (stopped)
             // According to reference solution, we should print the Signal that caused the stop. (use WSTOPSIG)
             int stopper = WSTOPSIG(status);
-            printf("JOB [%d] (%d) stopped by SIGNAL %d\n", pid2jid(pid), pid, stopper);                 
+            printf("JOB [%d] (%d) stopped by SIGNAL %d\n", pid2jid(pid), pid, stopper);
         }
-            
     }
 
     // Detect Error and print accordingly (got this part from the textbook)
@@ -530,7 +526,7 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig)
 {
-    printf("Interrupt Signal\n");
+    // printf("Interrupt Signal\n");
 
     // Get the process ID and send the SIGINT signal using kill function
     pid_t pid = fgpid(jobs);
@@ -554,7 +550,7 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig)
 {
-    printf(" Suspend signal\n");
+    // printf(" Suspend signal\n");
 
     // Get the process ID and send the signal using kill function
     pid_t pid = fgpid(jobs);
@@ -838,7 +834,7 @@ pid_t _fork(void)
 
     if ((pid = fork()) < 0)
     {
-       unix_error("Fork error");
+        unix_error("Fork error");
     }
 
     return pid;
